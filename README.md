@@ -3,3 +3,10 @@
 
 # The hosted bot is:  
 @memorist  
+
+# TO-DO
+* Integrate a database to store created flashcards.
+* Add functionality to modify or delete existing flashcards.
+* Implement revision methods, such as spaced repetition.
+* Develop an AI model to suggest specific modules or courses that need review.
+* Ensure that users only see their own flashcards, rather than all users' cards.
