@@ -1,6 +1,8 @@
 # The bot we are modifying is:  
 @AspirantFC_bot  
 
+code inside the memorist-bot folder
+
 # The hosted bot is:  
 @memorist  
 
