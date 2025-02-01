@@ -6,6 +6,10 @@ code is inside the memorist-bot folder
 # The hosted bot is:  
 @memorist  
 
+# command to run the code : 
+
+python main.py
+
 # TO-DO
 * Integrate a database to store created flashcards.
 * Add functionality to modify or delete existing flashcards.
