@@ -1,11 +1,15 @@
 #This file contains the /start command handler.
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+
 from telegram.ext import CallbackContext
 from data.storage import get_modules
 from handlers.utils import get_back_button
 
+
 async def start(update: Update, context: CallbackContext) -> None:
-    modules = get_modules()
+    user_id = update.effective_user.id  # Get the user ID
+
+    modules = get_modules(user_id)
     
     # Create a list of buttons for each module
     keyboard = [

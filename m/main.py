@@ -8,12 +8,14 @@ from handlers.utils import handle_button_click, get_back_button, handle_reveal_a
 from data.storage import add_course, add_module, add_flashcard
 
 async def handle_message(update: Update, context: CallbackContext) -> None:
+    user_id = update.effective_user.id  # Get the user ID
     text = update.message.text
     
     if "current_module" in context.user_data:
         # User is adding a course to a module
         module_name = context.user_data["current_module"]
-        add_course(module_name, text)
+
+        add_course(module_name,text, user_id)
         await update.message.reply_text(f"Course '{text}' added to module '{module_name}'!", reply_markup=get_back_button())
         del context.user_data["current_module"]  # Clear the current module
     elif "flashcard_state" in context.user_data:
@@ -31,12 +33,12 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             # Save the back of the flashcard
             front = context.user_data["flashcard_state"]["front"]
             back = text
-            add_flashcard(module_name, course_name, front, back)
+            add_flashcard(module_name, course_name, front, back,user_id)
             await update.message.reply_text(f"Flashcard added!\nFront: {front}\nBack: {back}", reply_markup=get_back_button())
             del context.user_data["flashcard_state"]  # Clear the flashcard state
     else:
         # User is adding a module
-        add_module(text)
+        add_module(text,user_id)
         await update.message.reply_text(f"Module '{text}' added!", reply_markup=get_back_button())
 
 def main() -> None:
