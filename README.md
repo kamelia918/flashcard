@@ -19,3 +19,8 @@ python main.py
 * adding the ability to add your kwn revision timers for certain decks
 * adding a ddl
 
+#  Database Schema
+
+modules	id (INTEGER PRIMARY KEY), user_id (INTEGER), module_name (TEXT)	) --> Stores modules per user
+courses	id (INTEGER PRIMARY KEY), module_id (INTEGER FOREIGN KEY), course_name (TEXT)) -->	Each course belongs to a module
+flashcards	id (INTEGER PRIMARY KEY), course_id (INTEGER FOREIGN KEY), question (TEXT), answer (TEXT)	)--> Each flashcard belongs to a course
