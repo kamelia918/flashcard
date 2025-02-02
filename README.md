@@ -10,6 +10,9 @@ code is inside the memorist-bot folder
 
 python main.py
 
+# command to restart the bot in python anywhere
+bash : pkill -f memoristbot.py; workon memorist-bot && python memoristbot.py &
+
 # TO-DO
 * Integrate a database to store created flashcards.
 * Add functionality to modify or delete existing flashcards.
