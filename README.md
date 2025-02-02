@@ -21,6 +21,6 @@ python main.py
 
 #  Database Schema
 
-modules	id (INTEGER PRIMARY KEY), user_id (INTEGER), module_name (TEXT)	) --> Stores modules per user
-courses	id (INTEGER PRIMARY KEY), module_id (INTEGER FOREIGN KEY), course_name (TEXT)) -->	Each course belongs to a module
-flashcards	id (INTEGER PRIMARY KEY), course_id (INTEGER FOREIGN KEY), question (TEXT), answer (TEXT)	)--> Each flashcard belongs to a course
+* modules	id (INTEGER PRIMARY KEY), user_id (INTEGER), module_name (TEXT)	 --> Stores modules per user
+* courses	id (INTEGER PRIMARY KEY), module_id (INTEGER FOREIGN KEY), course_name (TEXT) -->	Each course belongs to a module
+* flashcards	id (INTEGER PRIMARY KEY), course_id (INTEGER FOREIGN KEY), question (TEXT), answer (TEXT)	)--> Each flashcard belongs to a course
