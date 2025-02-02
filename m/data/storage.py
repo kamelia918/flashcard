@@ -6,28 +6,26 @@ def create_db():
     with sqlite3.connect("bot_data.db") as conn:
         cursor = conn.cursor()
 
-        # Create table for modules
+        # Create tables with unique constraints
         cursor.execute('''
-    CREATE TABLE IF NOT EXISTS modules (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        module_name TEXT NOT NULL,
-        UNIQUE(user_id, module_name)  -- Ensures unique module names per user
-    )
-''')
+        CREATE TABLE IF NOT EXISTS modules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            module_name TEXT NOT NULL,
+            UNIQUE(user_id, module_name)
+        )
+        ''')
 
-
-        # Create table for courses
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS courses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             module_id INTEGER NOT NULL,
             course_name TEXT NOT NULL,
+            UNIQUE(module_id, course_name),
             FOREIGN KEY (module_id) REFERENCES modules(id)
         )
         ''')
 
-        # Create table for flashcards
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS flashcards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,14 +35,10 @@ def create_db():
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             next_review DATETIME,
             interval INTEGER DEFAULT 1,
+            UNIQUE(course_id, front),
             FOREIGN KEY (course_id) REFERENCES courses(id)
         )
         ''')
-
-        # Add indexes for faster queries
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_modules_user_id ON modules (user_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_courses_module_id ON courses (module_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_flashcards_course_id ON flashcards (course_id)")
 
         conn.commit()
 
@@ -52,12 +46,19 @@ create_db()
 print("Database and tables created successfully.")
 
 # Add Module
-def add_module(module_name: str, user_id: int) -> None:
-    with sqlite3.connect("bot_data.db") as conn:
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO modules (user_id, module_name) VALUES (?, ?)", (user_id, module_name))
-        conn.commit()
-
+def add_module(module_name: str, user_id: int) -> str:
+    try:
+        with sqlite3.connect("bot_data.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO modules (user_id, module_name) VALUES (?, ?)",
+                (user_id, module_name)
+            )
+            conn.commit()
+            return "success"
+    except sqlite3.IntegrityError:
+        return "duplicate_module"
+    
 # Get Modules for a specific user
 def get_modules(user_id: int) -> list:
     with sqlite3.connect("bot_data.db") as conn:
@@ -66,20 +67,38 @@ def get_modules(user_id: int) -> list:
         modules = [row[0] for row in cursor.fetchall()]
     return modules
 
+# Function to get the module_id based on the module_name
+def get_module_id(module_name: str, user_id: int) -> int:
+    try:
+        with sqlite3.connect("bot_data.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM modules WHERE module_name = ? AND user_id = ?",
+                (module_name, user_id)
+            )
+            result = cursor.fetchone()
+            if result:
+                return result[0]  # Return the module_id
+            else:
+                return None  # Return None if module_name doesn't exist
+    except Exception as e:
+        print(f"Error occurred while retrieving module_id: {e}")
+        return None
 
 # Add Course to a module
-def add_course(module_name: str, course_name: str, user_id: int) -> None:
-    with sqlite3.connect("bot_data.db") as conn:
-        cursor = conn.cursor()
-
-        # Get the module_id for the specified module
-        cursor.execute("SELECT id FROM modules WHERE module_name = ? AND user_id = ?", (module_name, user_id))
-        module_id = cursor.fetchone()
-
-        if module_id:
-            cursor.execute("INSERT INTO courses (module_id, course_name) VALUES (?, ?)", (module_id[0], course_name))
+def add_course(module_id: int, course_name: str, user_id: int) -> str:
+    try:
+        with sqlite3.connect("bot_data.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO courses (module_id, course_name) VALUES (?, ?)",
+                (module_id, course_name)
+            )
             conn.commit()
-
+            return "success"
+    except sqlite3.IntegrityError:
+        return "duplicate_course"
+    
 # Get Courses for a Module
 def get_courses(module_name: str, user_id: int) -> list:
     with sqlite3.connect("bot_data.db") as conn:
@@ -93,24 +112,33 @@ def get_courses(module_name: str, user_id: int) -> list:
     return courses
 
 # Add Flashcard to a course
-def add_flashcard(module_name: str, course_name: str, front: str, back: str, user_id: int) -> None:
-    with sqlite3.connect("bot_data.db") as conn:
-        cursor = conn.cursor()
+def add_flashcard(module_name: str, course_name: str, front: str, back: str, user_id: int) -> str:
+    try:
+        with sqlite3.connect("bot_data.db") as conn:
+            cursor = conn.cursor()
 
-        # Get course_id
-        cursor.execute("""
-            SELECT id FROM courses 
-            WHERE course_name = ? AND module_id = (SELECT id FROM modules WHERE module_name = ? AND user_id = ?)
-        """, (course_name, module_name, user_id))
-        course_id = cursor.fetchone()
-
-        if course_id:
+            # Get course_id
             cursor.execute("""
-                INSERT INTO flashcards (course_id, front, back, next_review, interval) 
-                VALUES (?, ?, ?, datetime('now'), 1)
-            """, (course_id[0], front, back))
-            conn.commit()
+                SELECT id FROM courses 
+                WHERE course_name = ? 
+                AND module_id = (
+                    SELECT id FROM modules 
+                    WHERE module_name = ? AND user_id = ?
+                )
+            """, (course_name, module_name, user_id))
+            course_id = cursor.fetchone()
 
+            if course_id:
+                cursor.execute("""
+                    INSERT INTO flashcards (course_id, front, back, next_review, interval) 
+                    VALUES (?, ?, ?, datetime('now'), 1)
+                """, (course_id[0], front, back))
+                conn.commit()
+                return "success"
+            return "invalid_course"
+    except sqlite3.IntegrityError:
+        return "duplicate_flashcard"
+    
 # Get Flashcards for a specific Course
 def get_flashcards(module_name: str, course_name: str, user_id: int) -> list:
     with sqlite3.connect("bot_data.db") as conn:
