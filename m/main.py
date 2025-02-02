@@ -4,14 +4,25 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler,CallbackContext
 from handlers.start import start
-from handlers.utils import handle_button_click, get_back_button, handle_revision_feedback,handle_show_back,handle_restart_revision,handle_next_card
-from data.storage import add_course, add_module, add_flashcard,get_modules,get_courses,get_module_id,get_flashcards
+from handlers.utils import handle_button_click, get_back_button, handle_revision_feedback,handle_show_back,handle_restart_revision,handle_next_card,handle_delete_module,handle_modify_module
+from data.storage import add_course, add_module, add_flashcard,get_modules,get_courses,get_module_id,get_flashcards,modify_module
 
 async def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     text = update.message.text.strip()
+    if "modify_module" in context.user_data:
+        # Modify module name
+        old_name = context.user_data["modify_module"]
+        result = modify_module(old_name, text, user_id)
 
-    if "current_module" in context.user_data:
+        if result == "success":
+            await update.message.reply_text(f"Module '{old_name}' renamed to '{text}'.", reply_markup=get_back_button())
+        elif result == "duplicate_module":
+            await update.message.reply_text(f"Module '{text}' already exists.", reply_markup=get_back_button())
+
+        del context.user_data["modify_module"]
+
+    elif "current_module" in context.user_data:
         # Adding a course
         module_name = context.user_data["current_module"]
         module_id = get_module_id(module_name, user_id)
@@ -94,6 +105,8 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_show_back, pattern="^show_back_"))
     application.add_handler(CallbackQueryHandler(handle_next_card, pattern="^next_card_"))
     application.add_handler(CallbackQueryHandler(handle_restart_revision, pattern="^restart_revision$"))
+    application.add_handler(CallbackQueryHandler(handle_modify_module, pattern="^modify_module_"))
+    application.add_handler(CallbackQueryHandler(handle_delete_module, pattern="^delete_module_"))
     # Start the bot
     print("Bot is running...")
     print("All handlers added. Running polling...")  # Debugging log

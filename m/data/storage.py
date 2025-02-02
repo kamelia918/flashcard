@@ -85,6 +85,45 @@ def get_module_id(module_name: str, user_id: int) -> int:
         print(f"Error occurred while retrieving module_id: {e}")
         return None
 
+def modify_module(old_name: str, new_name: str, user_id: int) -> str:
+    try:
+        with sqlite3.connect("bot_data.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE modules SET module_name = ? WHERE module_name = ? AND user_id = ?",
+                (new_name, old_name, user_id)
+            )
+            conn.commit()
+            return "success"
+    except sqlite3.IntegrityError:
+        return "duplicate_module"
+    
+def delete_module(module_name: str, user_id: int) -> None:
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+
+        # Get the module ID
+        cursor.execute("SELECT id FROM modules WHERE module_name = ? AND user_id = ?", (module_name, user_id))
+        module_id = cursor.fetchone()
+
+        if module_id:
+            # Delete all flashcards associated with the module's courses
+            cursor.execute("""
+                DELETE FROM flashcards 
+                WHERE course_id IN (
+                    SELECT id FROM courses WHERE module_id = ?
+                )
+            """, (module_id[0],))
+
+            # Delete all courses associated with the module
+            cursor.execute("DELETE FROM courses WHERE module_id = ?", (module_id[0],))
+
+            # Delete the module
+            cursor.execute("DELETE FROM modules WHERE id = ?", (module_id[0],))
+
+            conn.commit()
+
+
 # Add Course to a module
 def add_course(module_id: int, course_name: str, user_id: int) -> str:
     try:

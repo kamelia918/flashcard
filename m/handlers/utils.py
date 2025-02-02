@@ -3,7 +3,7 @@ from telegram.ext import CallbackContext
 import random
 from data.storage import (
     add_module, get_modules, add_course, get_courses,
-    add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review
+    add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review,delete_module
 )
 
 async def handle_button_click(update: Update, context: CallbackContext) -> None:
@@ -12,11 +12,25 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     
     clicked_button_data = query.data  # Get the callback_data of the clicked button
     user_id = update.effective_user.id  # Get the user ID
+    callback_data = query.data
 
     if clicked_button_data == "add_module":
         # Handle "Add Module" button
         await query.edit_message_text("Type the name of the module you want to add.", reply_markup=get_back_button())
-    
+
+    elif clicked_button_data.startswith("modify_module_"):
+        print("and here?")
+        #  # Extract module name from callback data
+        module_name = clicked_button_data.replace("module_", "")
+        print("modify?")
+        await handle_modify_module(update,context)
+    elif clicked_button_data.startswith("delete_module_"):
+        print("and here?")
+        #  # Extract module name from callback data
+        module_name = clicked_button_data.replace("module_", "")
+        print("modify?")
+        await handle_delete_module(update,context)
+
     elif clicked_button_data == "back_to_modules":
         # Handle "Back" button to return to the list of modules
         modules = get_modules(user_id)  # Fetch modules for the current user
@@ -329,6 +343,40 @@ async def handle_restart_revision(update: Update, context: CallbackContext) -> N
     revision_state["score"] = 0
     random.shuffle(revision_state["flashcards"])  # Shuffle again for randomness
     await show_next_flashcard(update, context)
+
+   
+
+async def handle_modify_module(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split("_")
+    if len(parts) == 3:  # Format: "modify_module_moduleName"
+        _, _, module_name = parts
+        context.user_data["modify_module"] = module_name
+        await query.edit_message_text(f"Enter the new name for module '{module_name}':", reply_markup=get_back_button())
+
+
+async def handle_delete_module(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split("_")
+    if len(parts) == 3:  # Format: "delete_module_moduleName"
+        _, _, module_name = parts
+        user_id = update.effective_user.id
+
+        # Delete the module and its associated courses and flashcards
+        delete_module(module_name, user_id)
+        await query.edit_message_text(f"Module '{module_name}' and all its courses/flashcards have been deleted.", reply_markup=get_back_button())
+
+
+
+
+
+
+
+
 
 def get_back_button():
     # Helper function to create a "Back" button
