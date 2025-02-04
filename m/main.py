@@ -4,8 +4,8 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler,CallbackContext
 from handlers.start import start
-from handlers.utils import handle_button_click, get_back_button, handle_revision_feedback,handle_show_back,handle_restart_revision,handle_next_card,handle_delete_module,handle_modify_module
-from data.storage import add_course, add_module, add_flashcard,get_modules,get_courses,get_module_id,get_flashcards,modify_module
+from handlers.utils import handle_button_click, get_back_button, handle_revision_feedback,handle_show_back,handle_restart_revision,handle_next_card,handle_delete_module,handle_modify_module,handle_delete_course,handle_modify_course,handle_delete_flashcard,handle_modify_choice,handle_modify_flashcard
+from data.storage import add_course, add_module, add_flashcard,get_modules,get_courses,get_module_id,get_flashcards,modify_module,modify_cours,modify_flashcard
 
 async def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
@@ -25,6 +25,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
     elif "current_module" in context.user_data:
         # Adding a course
         module_name = context.user_data["current_module"]
+        print("current module",module_name)
         module_id = get_module_id(module_name, user_id)
 
         if not module_name:
@@ -45,7 +46,22 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         elif result == "duplicate_course":
             await update.message.reply_text(f"Course '{text}' already exists in module '{module_name}'.", reply_markup=get_back_button())
         del context.user_data["current_module"]
+    elif "modify_course" in context.user_data:
+        # Modify course name
+        print("conetxt user data :",context.user_data)
+        module_name = context.user_data["modify_course"]["module"]
+        print("module name ",module_name)
+        old_name = context.user_data["modify_course"]["old_name"]
+        result = modify_cours(module_name, old_name, text, user_id)
+        print("resultat modify cours ",result)
+        if result == "success":
+            await update.message.reply_text(f"Course '{old_name}' renamed to '{text}'.", reply_markup=get_back_button())
+        elif result == "duplicate_course":
+            await update.message.reply_text(f"Course '{text}' already exists in module '{module_name}'.", reply_markup=get_back_button())
+        
+        del context.user_data["modify_course"]
 
+    
     elif "flashcard_state" in context.user_data:
         # Adding a flashcard
         flashcard_state = context.user_data["flashcard_state"]
@@ -71,6 +87,29 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             elif result == "duplicate_flashcard":
                 await update.message.reply_text(f"Flashcard with front '{front}' already exists in this course.", reply_markup=get_back_button())
             del context.user_data["flashcard_state"]
+    elif "modify_flashcard" in context.user_data:
+        state = context.user_data["modify_flashcard"]
+        flashcard_id = state["id"]
+        choice = state.get("choice")
+        
+        if choice == "modify_front":
+            modify_flashcard(flashcard_id, new_front=text)
+            await update.message.reply_text("Front updated!", reply_markup=get_back_button())
+            del context.user_data["modify_flashcard"]
+            
+        elif choice == "modify_back":
+            modify_flashcard(flashcard_id, new_back=text)
+            await update.message.reply_text("Back updated!", reply_markup=get_back_button())
+            del context.user_data["modify_flashcard"]
+            
+        elif choice == "modify_both":
+            if "new_front" not in state:
+                state["new_front"] = text
+                await update.message.reply_text("Now enter the new BACK text:")
+            else:
+                modify_flashcard(flashcard_id, new_front=state["new_front"], new_back=text)
+                await update.message.reply_text("Front and back updated!", reply_markup=get_back_button())
+                del context.user_data["modify_flashcard"]
 
     else:
         # Adding a module
@@ -107,6 +146,11 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_restart_revision, pattern="^restart_revision$"))
     application.add_handler(CallbackQueryHandler(handle_modify_module, pattern="^modify_module_"))
     application.add_handler(CallbackQueryHandler(handle_delete_module, pattern="^delete_module_"))
+    application.add_handler(CallbackQueryHandler(handle_modify_course, pattern="^modify_course_"))
+    application.add_handler(CallbackQueryHandler(handle_delete_course, pattern="^delete_course_"))
+    application.add_handler(CallbackQueryHandler(handle_delete_flashcard, pattern="^delete_flashcard_"))
+    application.add_handler(CallbackQueryHandler(handle_modify_flashcard, pattern="^modify_flashcard_"))
+    application.add_handler(CallbackQueryHandler(handle_modify_choice, pattern="^modify_(front|back|both)$"))
     # Start the bot
     print("Bot is running...")
     print("All handlers added. Running polling...")  # Debugging log

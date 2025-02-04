@@ -150,6 +150,91 @@ def get_courses(module_name: str, user_id: int) -> list:
         courses = [row[0] for row in cursor.fetchall()]
     return courses
 
+# def modify_cours(old_name: str, new_name: str, user_id: int, module_id: int) -> str:
+#     try:
+#         with sqlite3.connect("bot_data.db") as conn:
+#             cursor = conn.cursor()
+
+#             # Update the course name in the modules table
+#             cursor.execute(
+#                 "UPDATE modules SET module_name = ? WHERE module_name = ? AND user_id = ? AND id = ?",
+#                 (new_name, old_name, user_id, module_id)
+#             )
+
+#             conn.commit()
+#             return "success"
+#     except sqlite3.IntegrityError:
+#         return "duplicate_cours"
+
+def modify_cours(module_name: str, old_name: str, new_name: str, user_id: int) -> str:
+    try:
+        with sqlite3.connect("bot_data.db") as conn:
+            cursor = conn.cursor()
+            
+            # Get the module_id
+            cursor.execute("SELECT id FROM modules WHERE module_name = ? AND user_id = ?", (module_name, user_id))
+            module_id = cursor.fetchone()
+            
+            if module_id:
+                cursor.execute(
+                    "UPDATE courses SET course_name = ? WHERE module_id = ? AND course_name = ?",
+                    (new_name, module_id[0], old_name)
+                )
+                conn.commit()
+                return "success"
+            return "module_not_found"
+    except sqlite3.IntegrityError:
+        return "duplicate_course"
+        
+# def delete_cours(course_name: str, user_id: int, module_id: int) -> None:
+#     with sqlite3.connect("bot_data.db") as conn:
+#         cursor = conn.cursor()
+
+#         # Get the course ID associated with the module
+#         cursor.execute("""
+#             SELECT id FROM courses
+#             WHERE course_name = ? AND module_id = ? AND EXISTS (
+#                 SELECT 1 FROM modules WHERE id = ? AND user_id = ?
+#             )
+#         """, (course_name, module_id, module_id, user_id))
+
+#         course_id = cursor.fetchone()
+
+#         if course_id:
+#             # Delete flashcards related to this course
+#             cursor.execute("""
+#                 DELETE FROM flashcards WHERE course_id = ?
+#             """, (course_id[0],))
+
+#             # Delete the specific course
+#             cursor.execute("""
+#                 DELETE FROM courses WHERE id = ?
+#             """, (course_id[0],))
+
+#             conn.commit()
+#         else:
+#             print("Course not found or does not belong to the module.")
+
+def delete_cours(module_name: str, course_name: str, user_id: int) -> None:
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        
+        # Get the module_id
+        cursor.execute("SELECT id FROM modules WHERE module_name = ? AND user_id = ?", (module_name, user_id))
+        module_id = cursor.fetchone()
+        
+        if module_id:
+            # Get the course_id
+            cursor.execute("SELECT id FROM courses WHERE module_id = ? AND course_name = ?", (module_id[0], course_name))
+            course_id = cursor.fetchone()
+            
+            if course_id:
+                # Delete flashcards
+                cursor.execute("DELETE FROM flashcards WHERE course_id = ?", (course_id[0],))
+                # Delete course
+                cursor.execute("DELETE FROM courses WHERE id = ?", (course_id[0],))
+                conn.commit()
+
 # Add Flashcard to a course
 def add_flashcard(module_name: str, course_name: str, front: str, back: str, user_id: int) -> str:
     try:
@@ -256,3 +341,30 @@ def update_flashcard_review(module_name: str, course_name: str, flashcard_id: in
                 WHERE id = ?
             """, (new_interval, next_review, flashcard[0]))
             conn.commit()
+
+
+def delete_flashcard_by_id(flashcard_id: int) -> None:
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM flashcards WHERE id = ?", (flashcard_id,))
+        conn.commit()
+
+def modify_flashcard(flashcard_id: int, new_front: str = None, new_back: str = None) -> None:
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        if new_front and new_back:
+            cursor.execute(
+                "UPDATE flashcards SET front = ?, back = ? WHERE id = ?",
+                (new_front, new_back, flashcard_id)
+            )
+        elif new_front:
+            cursor.execute(
+                "UPDATE flashcards SET front = ? WHERE id = ?",
+                (new_front, flashcard_id)
+            )
+        elif new_back:
+            cursor.execute(
+                "UPDATE flashcards SET back = ? WHERE id = ?",
+                (new_back, flashcard_id)
+            )
+        conn.commit()

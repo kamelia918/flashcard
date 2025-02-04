@@ -3,7 +3,7 @@ from telegram.ext import CallbackContext
 import random
 from data.storage import (
     add_module, get_modules, add_course, get_courses,
-    add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review,delete_module
+    add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review,delete_module , delete_cours,delete_flashcard_by_id
 )
 
 async def handle_button_click(update: Update, context: CallbackContext) -> None:
@@ -35,10 +35,14 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
         # Handle "Back" button to return to the list of modules
         modules = get_modules(user_id)  # Fetch modules for the current user
         
-        # Create a list of buttons for each module
-        keyboard = [
-            [InlineKeyboardButton(module, callback_data=f"module_{module}")] for module in modules
-        ]
+         # Create a list of buttons for each module
+        keyboard = []
+        for module in modules:
+            keyboard.append([
+                InlineKeyboardButton(module, callback_data=f"module_{module}"),
+                InlineKeyboardButton("✏️ Modify", callback_data=f"modify_module_{module}"),
+                InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_module_{module}")
+            ])
         
         # Add an "Add Module" button
         keyboard.append([InlineKeyboardButton("Add Module", callback_data="add_module")])
@@ -48,17 +52,29 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
         await query.edit_message_text("Your modules:", reply_markup=reply_markup)
     
     elif clicked_button_data.startswith("module_"):
+
         #  # Extract module name from callback data
-        module_name = clicked_button_data.replace("module_", "")
+        # Handle module button clicks
+        parts = clicked_button_data.split("_")
+        if len(parts) == 2:  # Format: "module_moduleName"
+            _, module_name = parts
+            courses = get_courses(module_name, user_id)
+            
+        # module_name = clicked_button_data.replace("module_", "")
         
   
         
-        courses = get_courses(module_name, user_id)  # Fetch courses for the module and user
+        # courses = get_courses(module_name, user_id)  # Fetch courses for the module and user
         
         # Create a list of buttons for each course
-        keyboard = [
-            [InlineKeyboardButton(course, callback_data=f"course_{module_name}_{course}")] for course in courses
-        ]
+        keyboard = []
+        for course in courses:
+            keyboard.append([
+                InlineKeyboardButton(course, callback_data=f"course_{module_name}_{course}"),
+                InlineKeyboardButton("✏️ Modify", callback_data=f"modify_course_{module_name}_{course}"),
+                InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_course_{module_name}_{course}")
+            ])
+       
         
         # Add an "Add Course" button
         keyboard.append([InlineKeyboardButton("Add Course", callback_data=f"add_course_{module_name}")])
@@ -87,7 +103,11 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await query.edit_message_text(f"Course: {course_name}\nWhat would you like to do?", reply_markup=reply_markup)
-    
+    elif clicked_button_data.startswith("modify_course_"):
+        print("here")
+        await handle_modify_course(update,context)
+    elif clicked_button_data.startswith("delete_course_"):
+        await handle_delete_course(update,context)
     elif clicked_button_data.startswith("add_flashcard_"):
         # Handle "Add Flashcard" button clicks
         parts = clicked_button_data.split("_")
@@ -150,24 +170,25 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
         parts = clicked_button_data.split("_")
         if len(parts) == 4:  # Format: "list_flashcards_moduleName_courseName"
             _, _, module_name, course_name = parts
-            flashcards = get_flashcards(module_name, course_name, user_id)  # Fetch flashcards for the course
+            flashcards = get_flashcards(module_name, course_name, user_id)
             
             if not flashcards:
-                await query.edit_message_text("No flashcards found for this course.", reply_markup=get_back_button())
+                await query.edit_message_text("No flashcards found.", reply_markup=get_back_button())
             else:
-                # Create a list of buttons for each flashcard (front only)
+                # Create buttons with modify/delete options
                 keyboard = [
-                    [InlineKeyboardButton(flashcard["front"], callback_data=f"show_flashcard_{module_name}_{course_name}_{flashcard['id']}")]
-                    for flashcard in flashcards
+                    [
+                        InlineKeyboardButton(f"Front: {f['front']}", callback_data=f"show_flashcard_{f['id']}"),
+                        InlineKeyboardButton("✏️ Modify", callback_data=f"modify_flashcard_{f['id']}"),
+                        InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_flashcard_{f['id']}")
+                    ]
+                    for f in flashcards
                 ]
-                
-                # Add a "Back" button
                 keyboard.append([InlineKeyboardButton("Back", callback_data=f"course_{module_name}_{course_name}")])
                 
                 reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await query.edit_message_text("Flashcards (click to reveal the back):", reply_markup=reply_markup)
-    
+                await query.edit_message_text("Flashcards:", reply_markup=reply_markup)
+
     elif clicked_button_data.startswith("show_flashcard_"):
         # Handle flashcard button clicks (reveal the back)
         parts = clicked_button_data.split("_")
@@ -180,8 +201,16 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
                 await query.edit_message_text(f"Front: {flashcard['front']}\nBack: {flashcard['back']}", reply_markup=get_back_button())
             else:
                 await query.edit_message_text("Flashcard not found.", reply_markup=get_back_button())
-
-
+    elif clicked_button_data.startswith("modify_flashcard_"):
+        await handle_modify_flashcard(update,context)
+    elif clicked_button_data.startswith("delete_flashcard_"):
+        await handle_delete_flashcard(update,context)
+    elif clicked_button_data.startswith("modify_front"):
+        await handle_modify_choice(update,context)
+    elif clicked_button_data.startswith("modify_back"):
+        await handle_modify_choice(update,context)
+    elif clicked_button_data.startswith("modify_both"):
+        await handle_modify_choice(update,context)
 
 
 async def show_next_flashcard(update: Update, context: CallbackContext) -> None:
@@ -372,8 +401,114 @@ async def handle_delete_module(update: Update, context: CallbackContext) -> None
 
 
 
+# async def handle_modify_course(update: Update, context: CallbackContext) -> None:
+#     query = update.callback_query
+#     await query.answer()
+
+#     parts = query.data.split("_")
+#     print("parts",parts)
+#     if len(parts) == 3:  # Format: "modify_course_moduleName_courseName"
+#         _, module_name, course_name = parts
+#         context.user_data["modify_course"] = (module_name, course_name)
+#         await query.edit_message_text(f"Enter the new name for course '{course_name}' in module '{module_name}':", reply_markup=get_back_button())
 
 
+# async def handle_delete_course(update: Update, context: CallbackContext) -> None:
+#     query = update.callback_query
+#     await query.answer()
+
+#     parts = query.data.split("_")
+#     if len(parts) == 3:  # Format: "delete_course_moduleName_courseName"
+#         _, module_name, course_name = parts
+#         user_id = update.effective_user.id
+
+#         # Delete the course and its associated flashcards
+#         delete_cours(course_name, user_id, module_name)
+#         await query.edit_message_text(f"Course '{course_name}' in module '{module_name}' and its flashcards have been deleted.", reply_markup=get_back_button())
+
+
+async def handle_modify_course(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split("_")
+    print("parts for modify course ",parts)
+
+    if len(parts) == 4:  # Format: "modify_course_moduleName_courseName"
+        _,_, module_name, course_name = parts
+        context.user_data["modify_course"] = {
+            "module": module_name,
+            "old_name": course_name
+        }
+        await query.edit_message_text(f"Enter the new name for course '{course_name}':", reply_markup=get_back_button())
+
+async def handle_delete_course(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split("_")
+
+    if len(parts) == 4:  # Format: "delete_course_moduleName_courseName"
+        _,_, module_name, course_name = parts
+        user_id = update.effective_user.id
+        
+        # Delete the course and its flashcards
+        delete_cours(module_name, course_name, user_id)
+        await query.edit_message_text(f"Course '{course_name}' and all its flashcards have been deleted.", reply_markup=get_back_button())
+
+
+
+async def handle_delete_flashcard(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split("_")
+    if len(parts) == 3:  # Format: "delete_flashcard_flashcardId"
+        flashcard_id = int(parts[2])
+        delete_flashcard_by_id(flashcard_id)
+        await query.edit_message_text("Flashcard deleted!", reply_markup=get_back_button())
+
+
+async def handle_modify_flashcard(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    parts = query.data.split("_")
+    print("parts for flashcard",parts)
+    if len(parts) == 3:  # Format: "modify_flashcard_flashcardId"
+        flashcard_id = int(parts[2])
+        context.user_data["modify_flashcard"] = {
+            "id": flashcard_id,
+            "step": "choose_field"
+        }
+        
+        # Ask user what to modify
+        keyboard = [
+            [InlineKeyboardButton("Front", callback_data="modify_front")],
+            [InlineKeyboardButton("Back", callback_data="modify_back")],
+            [InlineKeyboardButton("Both", callback_data="modify_both")],
+            [InlineKeyboardButton("Back", callback_data=f"back_to_course_{context.user_data.get('current_course')}")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text("What would you like to modify?", reply_markup=reply_markup)
+
+async def handle_modify_choice(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    await query.answer()
+    
+    choice = query.data  # "modify_front", "modify_back", or "modify_both"
+    print("context user data : ",context.user_data)
+    context.user_data["modify_flashcard"]["choice"] = choice
+    
+    if choice == "modify_front":
+        await query.edit_message_text("Enter the new FRONT text:")
+    elif choice == "modify_back":
+        await query.edit_message_text("Enter the new BACK text:")
+    elif choice == "modify_both":
+        await query.edit_message_text("Enter the new FRONT text first:")
+    elif choice =="back_to_course_{context.user_data.get('current_course')}":
+        return
 
 
 
