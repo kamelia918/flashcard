@@ -4,6 +4,7 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler,CallbackContext
 from handlers.start import start
+from handlers.module import modify_module_main
 from handlers.utils import handle_button_click, get_back_button, handle_revision_feedback,handle_show_back,handle_restart_revision,handle_next_card,handle_delete_module,handle_modify_module,handle_delete_course,handle_modify_course,handle_delete_flashcard,handle_modify_choice,handle_modify_flashcard
 from data.storage import add_course, add_module, add_flashcard,get_modules,get_courses,get_module_id,get_flashcards,modify_module,modify_cours,modify_flashcard
 
@@ -11,17 +12,8 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     text = update.message.text.strip()
     if "modify_module" in context.user_data:
-        # Modify module name
-        old_name = context.user_data["modify_module"]
-        result = modify_module(old_name, text, user_id)
-
-        if result == "success":
-            await update.message.reply_text(f"Module '{old_name}' renamed to '{text}'.", reply_markup=get_back_button())
-        elif result == "duplicate_module":
-            await update.message.reply_text(f"Module '{text}' already exists.", reply_markup=get_back_button())
-
-        del context.user_data["modify_module"]
-
+        await modify_module_main(user_id,text,update,context)
+        
     elif "current_module" in context.user_data:
         # Adding a course
         module_name = context.user_data["current_module"]
@@ -76,14 +68,14 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
                 await update.message.reply_text(f"Flashcard with front '{text}' already exists in this course.", reply_markup=get_back_button())
                 return
             context.user_data["flashcard_state"]["step"] = "back"
-            await update.message.reply_text("Now type the **back** of the flashcard.", reply_markup=get_back_button())
+            await update.message.reply_text("Veuillez maintenant saisir le <b>verso</b> de la carte mémoire. 🔄", reply_markup=get_back_button(), parse_mode="HTML")
         elif flashcard_state["step"] == "back":
             front = context.user_data["flashcard_state"]["front"]
             back = text
             
             result = add_flashcard(module_name, course_name, front, back, user_id)
             if result == "success":
-                await update.message.reply_text(f"Flashcard added!\nFront: {front}\nBack: {back}", reply_markup=get_back_button())
+                await update.message.reply_text(f"✅ Flashcard added!\n<b>Front:</b> {front}\n<b>Back:</b> {back}", reply_markup=get_back_button(), parse_mode="HTML")
             elif result == "duplicate_flashcard":
                 await update.message.reply_text(f"Flashcard with front '{front}' already exists in this course.", reply_markup=get_back_button())
             del context.user_data["flashcard_state"]

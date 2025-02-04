@@ -29,7 +29,7 @@ async def handler_add_flashcardupdate(update : Update, context: CallbackContext)
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await query.edit_message_text("Please type the **front** of the flashcard.", reply_markup=reply_markup)
+        await query.edit_message_text("Veuillez saisir le <b>recto</b> de la carte mémoire.", reply_markup=reply_markup, parse_mode="HTML")
 
 
 

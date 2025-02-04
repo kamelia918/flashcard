@@ -1,9 +1,10 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 import random
-from .module import handle_list_modules
+from .module import *
 from .cours import handle_list_cours,handle_delete_course,handle_modify_course,handle_add_cours,handle_click_cours
 from .revision import *
+from .backBTN import *
 from data.storage import (
     add_module, get_modules, add_course, get_courses,
     add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review,delete_module , delete_cours,delete_flashcard_by_id
@@ -158,32 +159,6 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
 
    
 
-async def handle_modify_module(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    parts = query.data.split("_")
-    if len(parts) == 3:  # Format: "modify_module_moduleName"
-        _, _, module_name = parts
-        context.user_data["modify_module"] = module_name
-        await query.edit_message_text(f"Enter the new name for module '{module_name}':", reply_markup=get_back_button())
-
-
-async def handle_delete_module(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    parts = query.data.split("_")
-    if len(parts) == 3:  # Format: "delete_module_moduleName"
-        _, _, module_name = parts
-        user_id = update.effective_user.id
-
-        # Delete the module and its associated courses and flashcards
-        delete_module(module_name, user_id)
-        await query.edit_message_text(f"Module '{module_name}' and all its courses/flashcards have been deleted.", reply_markup=get_back_button())
-
-
-
 
 
 
@@ -242,11 +217,6 @@ async def handle_modify_choice(update: Update, context: CallbackContext) -> None
 
 
 
-
-def get_back_button():
-    # Helper function to create a "Back" button
-    keyboard = [[InlineKeyboardButton("Back", callback_data="back_to_modules")]]
-    return InlineKeyboardMarkup(keyboard)
 
 
 
