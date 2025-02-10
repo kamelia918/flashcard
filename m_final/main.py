@@ -130,6 +130,58 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(f"Module '{module_name}' already exists.", reply_markup=back_module_button())
 
 
+
+
+
+import sqlite3
+from telegram import Update
+from telegram.ext import Application, CommandHandler, CallbackContext
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime, timedelta
+
+# Connexion à la base de données
+def get_db_connection():
+    return sqlite3.connect('bot_data.db')
+
+# Fonction pour planifier les alertes
+def schedule_alerts(application: Application):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Récupérer toutes les révisions futures
+    cursor.execute('''
+        SELECT user_id, revision_day, revision_time, module_name, course_name
+        FROM schedules
+        WHERE revision_day >= DATE('now')
+    ''')
+    rows = cursor.fetchall()
+
+    # Planifier une alerte pour chaque révision
+    for row in rows:
+        user_id, revision_day, revision_time, module_name, course_name = row
+        revision_datetime = datetime.strptime(f"{revision_day} {revision_time}", "%Y-%m-%d %H:%M")
+
+        # Planifier la tâche
+        application.job_queue.run_once(
+            send_reminder,
+            revision_datetime,
+            data=(user_id, module_name, course_name),
+            name=f"reminder_{user_id}_{revision_day}_{revision_time}"
+        )
+
+    conn.close()
+
+# Fonction pour envoyer une notification
+async def send_reminder(context: CallbackContext):
+    user_id, module_name, course_name = context.job.data
+
+    # Envoyer un message à l'utilisateur
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=f"⏰ Il est l'heure de réviser !\n\nModule : {module_name}\nCours : {course_name}"
+    )
+
+
 def main() -> None:
     print("Starting bot...")  # Debugging log
 
@@ -170,7 +222,7 @@ def main() -> None:
     # application.add_handler(CallbackQueryHandler(handle_set_minute, pattern="^set_minute_"))
     # application.add_handler(CallbackQueryHandler(process_delete_schedule, pattern="^delete_schedule_"))
     # Error handler
-    
+    schedule_alerts(application)
     application.add_error_handler(error_handler)
 
     # Start the bot

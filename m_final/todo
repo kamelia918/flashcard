@@ -1,7 +1,7 @@
 '''
 set time functionality : 
 -afficher que les modules ou cours qui contiennent des flashcards ✅
--definir une heure / journé
+-definir une heure / journé✅
 -recevoir des notifications (les modules detail (cours concernés et les flashcards concernées))
 -boutton commencer revision lorsque on recoit une notification 
 -afficher les modules 
