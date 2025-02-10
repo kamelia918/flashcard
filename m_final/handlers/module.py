@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from data.storage import add_module, get_modules,modify_module,delete_module
-from .backBTN import get_back_button
+from .backBTN import back_module_button
 
 async def handle_add_module(update: Update, context: CallbackContext) -> None:
     module_name = update.message.text
@@ -61,7 +61,7 @@ async def handle_modify_module(update: Update, context: CallbackContext) -> None
     if len(parts) == 3:  # Format: "modify_module_moduleName"
         _, _, module_name = parts
         context.user_data["modify_module"] = module_name
-        await query.edit_message_text(f"Entrez le nouveau nom du module <b>{module_name}</b>:", reply_markup=get_back_button(),parse_mode="HTML")
+        await query.edit_message_text(f"Entrez le nouveau nom du module <b>{module_name}</b>:", reply_markup=back_module_button(),parse_mode="HTML")
 
 
 
@@ -75,11 +75,11 @@ async def modify_module_main(user_id: int, text: str, update: Update, context: C
 
     modules = get_modules(user_id)
     if text in modules:
-        await update.message.reply_text(f"Module <b>«{text}»</b> existe déjà.", reply_markup=get_back_button(), parse_mode="HTML")
+        await update.message.reply_text(f"Module <b>«{text}»</b> existe déjà.", reply_markup=back_module_button(), parse_mode="HTML")
     else:
         try:
             modify_module(old_name, text, user_id)
-            await update.message.reply_text(f"Module <b>«{old_name}»</b> renommé en <b>«{text}»</b>.", reply_markup=get_back_button(), parse_mode="HTML")
+            await update.message.reply_text(f"Module <b>«{old_name}»</b> renommé en <b>«{text}»</b>.", reply_markup=back_module_button(), parse_mode="HTML")
             del context.user_data["modify_module"]  # Nettoyer context.user_data
         except Exception as e:
             await update.message.reply_text(f"Erreur lors de la modification du module : {e}")
@@ -95,4 +95,4 @@ async def handle_delete_module(update: Update, context: CallbackContext) -> None
 
         # Delete the module and its associated courses and flashcards
         delete_module(module_name, user_id)
-        await query.edit_message_text(f"Le module <b>« {module_name} »</b> et tous ses cours/cartes mémoire ont été supprimés.", reply_markup=get_back_button(), parse_mode="HTML")
+        await query.edit_message_text(f"Le module <b>« {module_name} »</b> et tous ses cours/cartes mémoire ont été supprimés.", reply_markup=back_module_button(), parse_mode="HTML")

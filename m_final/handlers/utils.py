@@ -1,10 +1,12 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext
+from telegram.ext import CallbackContext , ContextTypes
 import random
 from .module import *
 from .cours import handle_list_cours,handle_delete_course,handle_modify_course,handle_add_cours,handle_click_cours
 from .revision import *
+from .set_revision import *
 from .backBTN import *
+from .start import start
 from data.storage import (
     add_module, get_modules, add_course, get_courses,
     add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review,delete_module , delete_cours,delete_flashcard_by_id
@@ -14,10 +16,11 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()  # Acknowledge the button click
     action_type, params = extract_callback_data(query.data)
-    
-    # Stocker l'action initiale si ce n'est pas déjà fait
-    if 'initial_action' not in context.user_data:
+    if action_type.startswith("add") or action_type.startswith("revise") or action_type.startswith("list") or action_type.startswith("set"):
         context.user_data['initial_action'] = action_type
+    # # Stocker l'action initiale si ce n'est pas déjà fait
+    # if 'initial_action' not in context.user_data:
+    #     context.user_data['initial_action'] = action_type
     print("initial action", context.user_data['initial_action'])
     clicked_button_data = query.data  # Get the callback_data of the clicked button
     user_id = update.effective_user.id  # Get the user ID
@@ -25,7 +28,7 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
 
     if clicked_button_data == "add_module":
         # Handle "Add Module" button
-        await query.edit_message_text("Type the name of the module you want to add.", reply_markup=get_back_button())
+        await query.edit_message_text("Type the name of the module you want to add.", reply_markup=back_module_button())
 
     elif clicked_button_data.startswith("modify_module_"):
         # Extract module name from callback data
@@ -41,7 +44,17 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
        
     elif clicked_button_data.startswith("module_"):
         await handle_list_cours(update,context)
-        
+    
+    elif clicked_button_data.startswith("moduletime_"): # print courses for set time 
+        await handle_list_cours_set_time(update,context)
+    
+    elif clicked_button_data.startswith("coursetime_"): # print flashcards for set time 
+        await handler_list_flashcardupdate_set_time(update,context)
+
+    elif clicked_button_data.startswith("show_flashcard_set_time_"):
+        await handler_show_flashcard_set_time(update,context)
+
+
     elif clicked_button_data.startswith("course_"):
         await handle_click_cours(update,context)
 
@@ -53,7 +66,28 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
         
     elif clicked_button_data.startswith("delete_course_"):
         await handle_delete_course(update,context)
-    # for the start button
+    elif clicked_button_data =="back_to_start":
+        await start(update,context)
+    elif clicked_button_data.startswith("definir_time_module_"):
+        await handle_set_time_module(update,context)
+    elif clicked_button_data.startswith("definir_time_cours_"):
+        await handle_set_time_course(update,context)
+    elif clicked_button_data.startswith("definir_time_flashcard_"):
+        await handle_set_time_flashcard(update,context)
+
+    elif clicked_button_data.startswith("select_day_"):
+        await select_day(update,context)
+    elif clicked_button_data.startswith("selected_date_"):
+        await handle_time_input(update,context)
+    elif clicked_button_data=="confirm_schedule":
+        await confirm_schedule(update,context)
+    elif clicked_button_data.startswith("add_hour_"):
+        await add_hour(update,context)
+    elif clicked_button_data=="palnning":
+        await handle_planning_set_time(update,context)
+    elif clicked_button_data=="confirm_hour":
+        await confirm_hour(update,context)
+    # for the start button------------------------------------------------------------------------------------
     elif clicked_button_data == "add_flashcard_":
         await handle_list_modules(update,context)
 
@@ -63,6 +97,11 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     elif clicked_button_data.startswith("revise_"):
         # Handle "Revise" button clicks
         await handle_list_modules(update,context)
+    elif clicked_button_data.startswith("set_"):
+        await handle_set_Time(update,context)
+    
+    elif clicked_button_data==("listModule_"): # definir une heure de revision pour les modules 
+        await  handle_list_modules_set_Time(update,context)
     # elif clicked_button_data.startswith("revise_"):
     #     # Handle "Revise" button clicks
     #     print("here1")
@@ -140,10 +179,11 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
             # Rechercher la flashcard avec l'ID correspondant
             flashcard = next((f for f in all_flashcards if str(f['id']) == flashcard_id), None)
 
+
             if flashcard:
-                await query.edit_message_text(f"Front: {flashcard['front']}\nBack: {flashcard['back']}", reply_markup=get_back_button())
+                await query.edit_message_text(f"Front: {flashcard['front']}\nBack: {flashcard['back']}", reply_markup=back_module_button())
             else:
-                await query.edit_message_text("Flashcard not found.", reply_markup=get_back_button())
+                await query.edit_message_text("Flashcard not found.", reply_markup=back_module_button())
     
     elif clicked_button_data.startswith("modify_flashcard_"):
         await handle_modify_flashcard(update,context)
@@ -171,7 +211,7 @@ async def handle_delete_flashcard(update: Update, context: CallbackContext) -> N
     if len(parts) == 3:  # Format: "delete_flashcard_flashcardId"
         flashcard_id = int(parts[2])
         delete_flashcard_by_id(flashcard_id)
-        await query.edit_message_text("Flashcard deleted!", reply_markup=get_back_button())
+        await query.edit_message_text("Flashcard deleted!", reply_markup=back_module_button())
 
 
 async def handle_modify_flashcard(update: Update, context: CallbackContext) -> None:
@@ -226,3 +266,14 @@ def extract_callback_data(callback_data):
     action_type = parts[0]  # Par exemple, "add", "revise", "list"
     params = parts[1:]       # Le reste des parties, si applicable
     return action_type, params
+
+
+
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a telegram message to notify the developer."""
+    # ... (Your error handling logic here) ...
+    print(f"Error: {context.error}")
+    if update and update.effective_chat:
+        await update.effective_chat.send_message(f"An error occurred: {context.error}")
+
+

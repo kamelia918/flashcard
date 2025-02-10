@@ -39,9 +39,20 @@ def create_db():
             FOREIGN KEY (course_id) REFERENCES courses(id)
         )
         ''')
-
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS schedules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        module_name TEXT,  -- Can be NULL if it's a course/flashcard schedule
+        course_name TEXT,  -- Can be NULL if it's a module/flashcard schedule
+        flashcard_id INTEGER,  -- Can be NULL if it's a module/course schedule
+        revision_day DATE, -- e.g., "Monday", "Tuesday", ... or a number 1-7
+        revision_time TIME,  -- 0-23
+        FOREIGN KEY (flashcard_id) REFERENCES flashcards(id)
+        -- No foreign key for module/course, as they are identified by name
+        );        ''')
         conn.commit()
-
+        
 create_db()
 print("Database and tables created successfully.")
 
@@ -149,6 +160,20 @@ def get_courses(module_name: str, user_id: int) -> list:
         """, (module_name, user_id))
         courses = [row[0] for row in cursor.fetchall()]
     return courses
+
+def get_course_id(conn, module_name, course_name):
+    """Retrieves the course_id based on module and course names.
+
+    You'll need to adapt this to your courses/modules table structure.
+    This is a placeholder;  you MUST implement the actual logic.
+    """
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM courses WHERE module_name = ? AND course_name = ?", (module_name, course_name)) #adapt to you table
+    result = cursor.fetchone()
+    if result:
+        return result[0]  # Return the course_id
+    else:
+        return None  # Or raise an exception, depending on your error handling
 
 # def modify_cours(old_name: str, new_name: str, user_id: int, module_id: int) -> str:
 #     try:
@@ -262,6 +287,8 @@ def add_flashcard(module_name: str, course_name: str, front: str, back: str, use
             return "invalid_course"
     except sqlite3.IntegrityError:
         return "duplicate_flashcard"
+
+
     
 # Get Flashcards for a specific Course
 def get_flashcards(module_name: str, course_name: str, user_id: int) -> list:
@@ -285,7 +312,36 @@ def get_flashcards(module_name: str, course_name: str, user_id: int) -> list:
 
     return flashcards
 
-# Get Due Flashcards
+
+def delete_flashcard_by_id(flashcard_id: int) -> None:
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM flashcards WHERE id = ?", (flashcard_id,))
+        conn.commit()
+
+
+
+def modify_flashcard(flashcard_id: int, new_front: str = None, new_back: str = None) -> None:
+    with sqlite3.connect("bot_data.db") as conn:
+        cursor = conn.cursor()
+        if new_front and new_back:
+            cursor.execute(
+                "UPDATE flashcards SET front = ?, back = ? WHERE id = ?",
+                (new_front, new_back, flashcard_id)
+            )
+        elif new_front:
+            cursor.execute(
+                "UPDATE flashcards SET front = ? WHERE id = ?",
+                (new_front, flashcard_id)
+            )
+        elif new_back:
+            cursor.execute(
+                "UPDATE flashcards SET back = ? WHERE id = ?",
+                (new_back, flashcard_id)
+            )
+        conn.commit()
+
+# # Get Due Flashcards
 def get_due_flashcards(module_name: str, course_name: str, user_id: int) -> list:
     with sqlite3.connect("bot_data.db") as conn:
         cursor = conn.cursor()
@@ -308,7 +364,7 @@ def get_due_flashcards(module_name: str, course_name: str, user_id: int) -> list
 
     return flashcards
 
-# Update Flashcard Review
+# # Update Flashcard Review
 def update_flashcard_review(module_name: str, course_name: str, flashcard_id: int, remembered: bool, user_id: int) -> None:
     with sqlite3.connect("bot_data.db") as conn:
         cursor = conn.cursor()
@@ -343,28 +399,21 @@ def update_flashcard_review(module_name: str, course_name: str, flashcard_id: in
             conn.commit()
 
 
-def delete_flashcard_by_id(flashcard_id: int) -> None:
-    with sqlite3.connect("bot_data.db") as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM flashcards WHERE id = ?", (flashcard_id,))
-        conn.commit()
 
-def modify_flashcard(flashcard_id: int, new_front: str = None, new_back: str = None) -> None:
-    with sqlite3.connect("bot_data.db") as conn:
-        cursor = conn.cursor()
-        if new_front and new_back:
-            cursor.execute(
-                "UPDATE flashcards SET front = ?, back = ? WHERE id = ?",
-                (new_front, new_back, flashcard_id)
-            )
-        elif new_front:
-            cursor.execute(
-                "UPDATE flashcards SET front = ? WHERE id = ?",
-                (new_front, flashcard_id)
-            )
-        elif new_back:
-            cursor.execute(
-                "UPDATE flashcards SET back = ? WHERE id = ?",
-                (new_back, flashcard_id)
-            )
-        conn.commit()
+def add_schedule(conn, user_id, module_name,course_name, flashcard_id, revision_day, revision_time):
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO schedules (user_id, module_name, course_name, flashcard_id, revision_day, revision_time)
+        VALUES (?, ?, NULL, NULL, ?, ?)
+    ''', (user_id, module_name,course_name, flashcard_id, revision_day, revision_time))
+    conn.commit()
+
+def get_schedules(conn, user_id):
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM schedules WHERE user_id = ?", (user_id,))
+    return cursor.fetchall()
+
+def delete_schedule(conn, schedule_id):
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM schedules WHERE id = ?", (schedule_id,))
+    conn.commit()

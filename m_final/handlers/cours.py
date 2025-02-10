@@ -1,8 +1,10 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
-from data.storage import delete_cours, get_courses
+from data.storage import delete_cours, get_courses,add_course,get_module_id
+from .set_revision import handler_list_flashcardupdate_set_time
 from .flashcard import handler_add_flashcardupdate,handler_list_flashcardupdate
 from .revision import handler_revise_flashcardupdate
+from .backBTN import back_module_button
 
 async def handle_list_cours(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -63,8 +65,6 @@ async def handle_modify_course(update: Update, context: CallbackContext) -> None
     await query.answer()
     
     parts = query.data.split("_")
-    print("parts for modify course ", parts)
-
     if len(parts) == 4:  # Format: "modify_course_moduleName_courseName"
         _, _, module_name, course_name = parts
         context.user_data["modify_course"] = {
@@ -79,11 +79,13 @@ async def handle_modify_course(update: Update, context: CallbackContext) -> None
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            f"Enter the new name for course '{course_name}':",
-            reply_markup=reply_markup  # Pass the reply_markup directly, no parentheses
+            f"Entrez le nouveau nom du cours <b> «{course_name}»</b>:",
+            reply_markup=reply_markup,  # Pass the reply_markup directly, no parentheses
+            parse_mode="HTML"
         )
     else:
         await query.edit_message_text("Invalid format for modifying course.")
+
 
 async def handle_delete_course(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -105,8 +107,9 @@ async def handle_delete_course(update: Update, context: CallbackContext) -> None
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            f"Course '{course_name}' and all its flashcards have been deleted.",
-            reply_markup=reply_markup  # Pass the reply_markup directly, no parentheses
+            f"✅Course <b>«{course_name}» </b> et toutes ses cartes mémoire ont été supprimés.",
+            reply_markup=reply_markup , # Pass the reply_markup directly, no parentheses
+            parse_mode="HTML"
         )
     else:
         await query.edit_message_text("Invalid format for deleting course.")
@@ -132,11 +135,40 @@ async def handle_add_cours(update: Update, context: CallbackContext) -> None:
 
 
         await query.edit_message_text(
-            f"Type the name of the course you want to add to module '{module_name}'.",
-            reply_markup=reply_markup  # Pass the reply_markup here
+            f"Tapez le nom du cours que vous souhaitez ajouter au module. <b>«{module_name}»</b>.",
+            reply_markup=reply_markup,  # Pass the reply_markup here
+            parse_mode="HTML"
         )
     else:
         await query.edit_message_text("Invalid format for adding a course.")
+
+
+async def handle_add_cours_main(user_id: int, text: str, update: Update, context: CallbackContext) -> None:
+    module_name = context.user_data.get("current_module")  # Utiliser .get() pour éviter les erreurs
+    if not module_name:
+        await update.message.reply_text("Erreur : Pas de module sélectionné.", reply_markup=back_module_button())
+        return
+
+    module_id = get_module_id(module_name,user_id) #ordre corrigé
+    if not module_id:
+        await update.message.reply_text(f"Module '{module_name}' introuvable.", reply_markup=back_module_button())
+        return
+
+    course_name = text
+
+    existing_courses = get_courses(module_name,user_id)  # Fetch all courses for the module
+    if course_name in existing_courses:
+        await update.message.reply_text(f"Le cours '{course_name}' existe déjà dans le module '{module_name}'.", reply_markup=back_module_button())
+        return
+
+    course_id = add_course(module_id, course_name,user_id)
+    await update.message.reply_text(f"✅ Le cours <b>« {course_name} »</b> a été ajouté au module <b>« {module_name} »</b> !", reply_markup=back_module_button(), parse_mode="HTML")
+
+    del context.user_data["current_module"]
+
+
+
+
 
 
 async def handle_click_cours(update: Update, context: CallbackContext) -> None:
@@ -163,6 +195,8 @@ async def handle_click_cours(update: Update, context: CallbackContext) -> None:
             await handler_list_flashcardupdate(update,context)
             print("leaving list ")
         elif(action =="set"):
-            print("set time ")    
-            
+            print("interring cond set ")
+            await handler_list_flashcardupdate_set_time(update,context)
+            print("leaving set ")
+
 

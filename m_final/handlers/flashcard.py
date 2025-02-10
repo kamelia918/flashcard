@@ -1,6 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 import random
+from .backBTN import back_cours_button
 from .revision import show_next_flashcard
 from data.storage import (
     add_module, get_modules, add_course, get_courses,
@@ -23,14 +24,14 @@ async def handler_add_flashcardupdate(update : Update, context: CallbackContext)
             "step": "front"  # First step: ask for the front of the flashcard
             }
         # Create the keyboard with a back button
-        keyboard = [
-            [InlineKeyboardButton("🔙 Retour", callback_data=f"course_{module_name}_{course_name}")]
-        ]
+        # keyboard = [
+        #     [InlineKeyboardButton("🔙 Retour", callback_data=f"course_{module_name}_{course_name}")]
+        # ]
         
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        # reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await query.edit_message_text("Veuillez saisir le <b>recto</b> de la carte mémoire.", reply_markup=reply_markup, parse_mode="HTML")
-
+        
+        await query.edit_message_text("Veuillez saisir le <b>recto</b> de la carte mémoire.", reply_markup=back_cours_button(), parse_mode="HTML")
 
 
 async def handler_list_flashcardupdate(update : Update, context: CallbackContext) -> None:
@@ -59,7 +60,7 @@ async def handler_list_flashcardupdate(update : Update, context: CallbackContext
                     ]
                 for f in flashcards
                 ]
-            keyboard.append([InlineKeyboardButton("Back", callback_data=f"course_{module_name}_{course_name}")])
+            keyboard.append([InlineKeyboardButton("Back", callback_data=f"modules_{module_name}")])
                 
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text("Flashcards:", reply_markup=reply_markup)

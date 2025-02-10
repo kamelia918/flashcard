@@ -1,10 +1,8 @@
 #This file contains the /start command handler.
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Bot, BotCommand, Update, InlineKeyboardButton, InlineKeyboardMarkup
 
 from telegram.ext import CallbackContext
-from data.storage import get_modules
-from handlers.utils import get_back_button
-from .utils import extract_callback_data
+
 
 async def start(update: Update, context: CallbackContext) -> None:
     keyboard=[]
@@ -21,5 +19,20 @@ Pour optimiser votre apprentissage, nous vous recommandons d’utiliser la techn
 🎥 <b>Vidéo explicative</b> : [Ajoutez votre lien ici]  
 
 N’hésitez pas à nous faire part de vos retours ! Bonne révision et visez l’excellence 😃✨"""
-    await update.message.reply_text(message, reply_markup=reply_markup, parse_mode="HTML")
+    # await update.message.reply_text(message, reply_markup=reply_markup, parse_mode="HTML")
+    if update.message:  # Called via /start command
+        await update.message.reply_text(message, reply_markup=reply_markup, parse_mode="HTML")
+        #  No initial_action set here.  It's set on the *button click*.
+    elif update.callback_query:  # Called by clicking the "Back" button
+        await update.callback_query.edit_message_text(message, reply_markup=reply_markup, parse_mode="HTML")
+        # Again, no initial_action set here
+    #else:  # Should not happen, but good to have a default case
+        #await update.message.reply_text("Unexpected update type.")
 
+
+async def set_commands(bot: Bot):
+    """Sets the bot's commands, which appear in the menu."""
+    commands = [
+        BotCommand(command="start", description="Start the bot"),
+            ]
+    await bot.set_my_commands(commands)
