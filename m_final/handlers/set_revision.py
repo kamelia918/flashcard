@@ -463,8 +463,8 @@ async def save_hour(update: Update, context: CallbackContext):
             # Vérifier si la flashcard existe déjà pour cette date
             cursor.execute('''
                 SELECT id FROM schedules
-                WHERE flashcard_id = ? AND revision_day = ?
-            ''', (flashcard, selected_date))
+                WHERE flashcard_id = ? AND revision_day = ? AND revision_time = ?
+            ''', (flashcard, selected_date,selected_hour))
             existing_entry = cursor.fetchone()
 
             if existing_entry:
@@ -498,8 +498,8 @@ async def save_hour(update: Update, context: CallbackContext):
                 # Vérifier si la flashcard existe déjà pour cette date
                 cursor.execute('''
                     SELECT id FROM schedules
-                    WHERE flashcard_id = ? AND revision_day = ?
-                ''', (flashcard_id[0], selected_date))
+                    WHERE flashcard_id = ? AND revision_day = ? AND revision_time = ?
+                ''', (flashcard_id[0], selected_date,selected_hour))
                 existing_entry = cursor.fetchone()
 
                 if not existing_entry:
@@ -536,8 +536,8 @@ async def save_hour(update: Update, context: CallbackContext):
                     # Vérifier si la flashcard existe déjà pour cette date
                     cursor.execute('''
                         SELECT id FROM schedules
-                        WHERE flashcard_id = ? AND revision_day = ?
-                    ''', (flashcard_id[0], selected_date))
+                        WHERE flashcard_id = ? AND revision_day = ? AND revision_time = ? 
+                    ''', (flashcard_id[0], selected_date,selected_hour))
                     existing_entry = cursor.fetchone()
 
                     if not existing_entry:

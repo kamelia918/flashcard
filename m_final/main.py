@@ -139,47 +139,53 @@ from telegram.ext import Application, CommandHandler, CallbackContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
 
-# Connexion à la base de données
-def get_db_connection():
-    return sqlite3.connect('bot_data.db')
+import time
+import sqlite3  # Remplace par ton SGBD si nécessaire
+import datetime
 
-# Fonction pour planifier les alertes
-def schedule_alerts(application: Application):
-    conn = get_db_connection()
+# Fonction pour vérifier les notifications
+async def check_notifications(application: Application):
+    print("testing ??")
+    conn = sqlite3.connect("bot_data.db")
     cursor = conn.cursor()
 
-    # Récupérer toutes les révisions futures
-    cursor.execute('''
-        SELECT user_id, revision_day, revision_time, module_name, course_name
-        FROM schedules
-        WHERE revision_day >= DATE('now')
-    ''')
-    rows = cursor.fetchall()
+    try:
+        while True:
+            print("testing while true ?? ??")
+            now_date = datetime.datetime.now().strftime("%Y-%m-%d").lstrip("0").replace("-0", "-")
+            now_time = datetime.datetime.now().strftime("%H:%M").lstrip("0")
+            print("date",now_date,"time",now_time)
 
-    # Planifier une alerte pour chaque révision
-    for row in rows:
-        user_id, revision_day, revision_time, module_name, course_name = row
-        revision_datetime = datetime.strptime(f"{revision_day} {revision_time}", "%Y-%m-%d %H:%M")
+            # Sélectionne les notifications dont la date et l'heure correspondent à maintenant
+            cursor.execute('''
+                SELECT id, user_id, module_name, course_name
+                FROM schedules
+                WHERE revision_day = ? AND revision_time = ?
+            ''', (now_date, now_time))
+            
+            notifications = cursor.fetchall()
+            print("notificationss ",notifications)
+            for notif in notifications:
+                notif_id, user_id, module_name, course_name = notif
+                message = f"⏰ Rappel : C'est l'heure de réviser le module *{module_name}* !"
+                
+                try:
+                    # Envoi du message
+                    await application.bot.send_message(chat_id=user_id, text=message, parse_mode="Markdown")
+                    
+                    # Supprimer la notification après l'envoi réussi
+                    cursor.execute("DELETE FROM schedules WHERE id = ?", (notif_id,))
+                    conn.commit()
+                except Exception as e:
+                    print(f"Erreur lors de l'envoi du message à l'utilisateur {user_id} : {e}")
 
-        # Planifier la tâche
-        application.job_queue.run_once(
-            send_reminder,
-            revision_datetime,
-            data=(user_id, module_name, course_name),
-            name=f"reminder_{user_id}_{revision_day}_{revision_time}"
-        )
+            # Attente d'une minute avant de vérifier à nouveau
+            await asyncio.sleep(60)
 
-    conn.close()
-
-# Fonction pour envoyer une notification
-async def send_reminder(context: CallbackContext):
-    user_id, module_name, course_name = context.job.data
-
-    # Envoyer un message à l'utilisateur
-    await context.bot.send_message(
-        chat_id=user_id,
-        text=f"⏰ Il est l'heure de réviser !\n\nModule : {module_name}\nCours : {course_name}"
-    )
+    except Exception as e:
+        print(f"Erreur dans la boucle de vérification des notifications : {e}")
+    finally:
+        conn.close()
 
 
 def main() -> None:
@@ -222,8 +228,15 @@ def main() -> None:
     # application.add_handler(CallbackQueryHandler(handle_set_minute, pattern="^set_minute_"))
     # application.add_handler(CallbackQueryHandler(process_delete_schedule, pattern="^delete_schedule_"))
     # Error handler
-    schedule_alerts(application)
+    # schedule_alerts(application)
+    
+
+
     application.add_error_handler(error_handler)
+# Démarrer la vérification des notifications en tâche de fond
+    loop = asyncio.get_event_loop()
+    loop.create_task(check_notifications(application))
+
 
     # Start the bot
     print("Bot is running...")
@@ -231,4 +244,4 @@ def main() -> None:
     application.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
