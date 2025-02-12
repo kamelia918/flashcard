@@ -11,6 +11,7 @@ from data.storage import (
     add_module, get_modules, add_course, get_courses,
     add_flashcard, get_flashcards, get_due_flashcards, update_flashcard_review,delete_module , delete_cours,delete_flashcard_by_id
 )
+from .set_revision_f.start_revision import *
 
 async def handle_button_click(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -87,6 +88,17 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
         await handle_planning_set_time(update,context)
     elif clicked_button_data=="confirm_hour":
         await confirm_hour(update,context)
+    # START REVISION POUR SET TIME 
+    elif clicked_button_data.startswith("start_revision_"): #commencer la revision pour set time revision 
+        await start_revision_callback(update,context)
+    elif clicked_button_data.startswith("select_moduleSETREVISION_"): #selectionner le module de set time revision
+        await select_module_callback(update,context)
+    elif clicked_button_data.startswith("start_course_revision_"):
+        await start_course_revision(update,context)
+    elif clicked_button_data.startswith("show_answer_"):
+        await show_answer_callback(update,context)
+    elif clicked_button_data.startswith("next_card_setTime_"):
+        await next_flashcard_callback(update,context)
     # for the start button------------------------------------------------------------------------------------
     elif clicked_button_data == "add_flashcard_":
         await handle_list_modules(update,context)

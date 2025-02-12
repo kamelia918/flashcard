@@ -21,6 +21,8 @@ from datetime import datetime, timedelta
 async def handle_set_Time(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()  # Acknowledge the button click
+    user_id = update.effective_user.id
+
 
     # Create a list of buttons for each module
     keyboard = []
@@ -28,6 +30,7 @@ async def handle_set_Time(update: Update, context: CallbackContext) -> None:
     keyboard.append([InlineKeyboardButton("📅 planning révision", callback_data=f"palnning")])
             
     keyboard.append([InlineKeyboardButton("🕗 Définir l'heure", callback_data="listModule_")])
+    keyboard.append([InlineKeyboardButton("revisions ratées ", callback_data=f"start_revision_{user_id}")])
 
     keyboard.append([InlineKeyboardButton("🔙 Retour", callback_data="back_to_start")])            
     reply_markup = InlineKeyboardMarkup(keyboard)

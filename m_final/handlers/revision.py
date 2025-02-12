@@ -120,6 +120,7 @@ async def handle_revision_feedback(update: Update, context: CallbackContext) -> 
     
     clicked_button_data = query.data
     parts = clicked_button_data.split("_")
+    print("parts for handle remembered and forgot ",parts)
     if len(parts) == 2:  # Format: "remembered_index" or "forgot_index"
         feedback, index = parts
         revision_state = context.user_data.get("revision_state")

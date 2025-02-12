@@ -11,6 +11,8 @@ from handlers.backBTN import back_cours_button , back_module_button
 from handlers.set_revision import *
 from handlers.utils import handle_button_click, handle_revision_feedback,handle_show_back,handle_restart_revision,handle_next_card,handle_delete_module,handle_modify_module,handle_delete_course,handle_modify_course,handle_delete_flashcard,handle_modify_choice,handle_modify_flashcard , error_handler
 from data.storage import add_course, add_module, add_flashcard,get_modules,get_courses,get_module_id,get_flashcards,modify_module,modify_cours,modify_flashcard
+from handlers.set_revision_f.send_notif import *
+
 
 async def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
@@ -131,61 +133,6 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
 
 
 
-
-
-import sqlite3
-from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackContext
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from datetime import datetime, timedelta
-
-import time
-import sqlite3  # Remplace par ton SGBD si nécessaire
-import datetime
-
-# Fonction pour vérifier les notifications
-async def check_notifications(application: Application):
-    print("testing ??")
-    conn = sqlite3.connect("bot_data.db")
-    cursor = conn.cursor()
-
-    try:
-        while True:
-            print("testing while true ?? ??")
-            now_date = datetime.datetime.now().strftime("%Y-%m-%d").lstrip("0").replace("-0", "-")
-            now_time = datetime.datetime.now().strftime("%H:%M").lstrip("0")
-            print("date",now_date,"time",now_time)
-
-            # Sélectionne les notifications dont la date et l'heure correspondent à maintenant
-            cursor.execute('''
-                SELECT id, user_id, module_name, course_name
-                FROM schedules
-                WHERE revision_day = ? AND revision_time = ?
-            ''', (now_date, now_time))
-            
-            notifications = cursor.fetchall()
-            print("notificationss ",notifications)
-            for notif in notifications:
-                notif_id, user_id, module_name, course_name = notif
-                message = f"⏰ Rappel : C'est l'heure de réviser le module *{module_name}* !"
-                
-                try:
-                    # Envoi du message
-                    await application.bot.send_message(chat_id=user_id, text=message, parse_mode="Markdown")
-                    
-                    # Supprimer la notification après l'envoi réussi
-                    cursor.execute("DELETE FROM schedules WHERE id = ?", (notif_id,))
-                    conn.commit()
-                except Exception as e:
-                    print(f"Erreur lors de l'envoi du message à l'utilisateur {user_id} : {e}")
-
-            # Attente d'une minute avant de vérifier à nouveau
-            await asyncio.sleep(60)
-
-    except Exception as e:
-        print(f"Erreur dans la boucle de vérification des notifications : {e}")
-    finally:
-        conn.close()
 
 
 def main() -> None:
