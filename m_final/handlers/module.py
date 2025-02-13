@@ -15,11 +15,27 @@ async def handle_add_module(update: Update, context: CallbackContext) -> None:
     ]
     
     # Add an "Add Module" button
-    keyboard.append([InlineKeyboardButton("Add Module", callback_data="add_module")])
+    keyboard.append([InlineKeyboardButton("➕ Ajouter un Module", callback_data="add_module")])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text(f"Module '{module_name}' added!", reply_markup=reply_markup)
+    await update.message.reply_text(f"✅ Module *«{module_name}»* ajouté!", reply_markup=reply_markup)
+
+
+async def handle_main_add_module(update: Update, context: CallbackContext,user_id:int, text:str) -> None:
+    
+    module_name = text
+    modules = get_modules(user_id)  # Fetch all modules for the user
+    if module_name in modules:
+        await update.message.reply_text(f"Module *«{module_name}»* existe déjà.", reply_markup=back_module_button())
+        return  # Stop execution to prevent adding a duplicate module
+    result = add_module(module_name, user_id)
+    if result == "success":
+        await update.message.reply_text(f"✅ Module *«{module_name}»* ajouté!", reply_markup=back_module_button())
+    elif result == "duplicate_module":
+        await update.message.reply_text(f"Module *«{module_name}»* existe déjà.", reply_markup=back_module_button())
+    del context.user_data["add_module"]
+
 
 
 
@@ -79,10 +95,12 @@ async def modify_module_main(user_id: int, text: str, update: Update, context: C
     else:
         try:
             modify_module(old_name, text, user_id)
-            await update.message.reply_text(f"Module <b>«{old_name}»</b> renommé en <b>«{text}»</b>.", reply_markup=back_module_button(), parse_mode="HTML")
+            await update.message.reply_text(f"✅ Module <b>«{old_name}»</b> renommé en <b>«{text}»</b>.", reply_markup=back_module_button(), parse_mode="HTML")
             del context.user_data["modify_module"]  # Nettoyer context.user_data
         except Exception as e:
             await update.message.reply_text(f"Erreur lors de la modification du module : {e}")
+
+
 
 async def handle_delete_module(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -95,4 +113,4 @@ async def handle_delete_module(update: Update, context: CallbackContext) -> None
 
         # Delete the module and its associated courses and flashcards
         delete_module(module_name, user_id)
-        await query.edit_message_text(f"Le module <b>« {module_name} »</b> et tous ses cours/cartes mémoire ont été supprimés.", reply_markup=back_module_button(), parse_mode="HTML")
+        await query.edit_message_text(f"✅ Le module <b>« {module_name} »</b> et tous ses cours/cartes mémoire ont été supprimés.", reply_markup=back_module_button(), parse_mode="HTML")
