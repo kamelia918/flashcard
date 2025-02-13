@@ -175,21 +175,6 @@ def get_course_id(conn, module_name, course_name):
     else:
         return None  # Or raise an exception, depending on your error handling
 
-# def modify_cours(old_name: str, new_name: str, user_id: int, module_id: int) -> str:
-#     try:
-#         with sqlite3.connect("bot_data.db") as conn:
-#             cursor = conn.cursor()
-
-#             # Update the course name in the modules table
-#             cursor.execute(
-#                 "UPDATE modules SET module_name = ? WHERE module_name = ? AND user_id = ? AND id = ?",
-#                 (new_name, old_name, user_id, module_id)
-#             )
-
-#             conn.commit()
-#             return "success"
-#     except sqlite3.IntegrityError:
-#         return "duplicate_cours"
 
 def modify_cours(module_name: str, old_name: str, new_name: str, user_id: int) -> str:
     try:
@@ -210,36 +195,7 @@ def modify_cours(module_name: str, old_name: str, new_name: str, user_id: int) -
             return "module_not_found"
     except sqlite3.IntegrityError:
         return "duplicate_course"
-        
-# def delete_cours(course_name: str, user_id: int, module_id: int) -> None:
-#     with sqlite3.connect("bot_data.db") as conn:
-#         cursor = conn.cursor()
-
-#         # Get the course ID associated with the module
-#         cursor.execute("""
-#             SELECT id FROM courses
-#             WHERE course_name = ? AND module_id = ? AND EXISTS (
-#                 SELECT 1 FROM modules WHERE id = ? AND user_id = ?
-#             )
-#         """, (course_name, module_id, module_id, user_id))
-
-#         course_id = cursor.fetchone()
-
-#         if course_id:
-#             # Delete flashcards related to this course
-#             cursor.execute("""
-#                 DELETE FROM flashcards WHERE course_id = ?
-#             """, (course_id[0],))
-
-#             # Delete the specific course
-#             cursor.execute("""
-#                 DELETE FROM courses WHERE id = ?
-#             """, (course_id[0],))
-
-#             conn.commit()
-#         else:
-#             print("Course not found or does not belong to the module.")
-
+ 
 def delete_cours(module_name: str, course_name: str, user_id: int) -> None:
     with sqlite3.connect("bot_data.db") as conn:
         cursor = conn.cursor()

@@ -94,6 +94,7 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     elif clicked_button_data.startswith("delete_course_"):
         await handle_delete_course(update,context)
     
+    #handlers pour list cards
     # modifier une carte 
     elif clicked_button_data.startswith("modify_flashcard_"):
         await handle_modify_flashcard(update,context)
@@ -121,16 +122,16 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     # retrour à la liste des carte
     elif clicked_button_data.startswith("backListFlashcard_"):
         await handler_list_flashcardupdate(update,context)
-        
 
-
-
-    
+    # handlers pour reviser    
+    # montrer la prochaine carte a reviser 
     elif clicked_button_data.startswith("next_card_"):
         await handle_next_card(update, context)
+    # recommancer la revision de 0
     elif clicked_button_data == "restart_revision":
-        print("restart r")
         await handle_restart_revision(update, context)
+    
+    # feedback pour calculer la note finale de revision
     elif clicked_button_data.startswith("remembered_") or clicked_button_data.startswith("forgot_"):
         await handle_revision_feedback(update, context)
         
