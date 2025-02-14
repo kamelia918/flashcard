@@ -4,7 +4,7 @@ from telegram.ext import CallbackContext
 import datetime
 import sqlite3
 from data.storage import *
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import ReplyKeyboardRemove, Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -262,10 +262,10 @@ def generate_calendar(year: int, month: int):
         row = []
         for day in range(week + 1, min(week + 8, days_in_month + 1)):
             # Désactiver les boutons des jours passés
-            if day <today.day:
+            if (year < today.year) or (year == today.year and month < today.month) or (year == today.year and month == today.month and day < today.day):
                 row.append(InlineKeyboardButton("❌", callback_data="disabled"))  # Bouton désactivé
             else:
-                row.append(InlineKeyboardButton(str(day), callback_data=f"select_day_{year}_{month}_{today.day}"))
+                row.append(InlineKeyboardButton(str(day), callback_data=f"select_day_{year}_{month}_{day}"))
         keyboard.append(row)
 
     # Boutons "Mois précédent" et "Mois suivant"
@@ -273,11 +273,11 @@ def generate_calendar(year: int, month: int):
     next_month_button = InlineKeyboardButton("⏩ Mois suivant", callback_data=f"next_month_{year}_{month}")
 
     # Désactiver le bouton "Mois précédent" si le mois actuel est le mois en cours
-    if today.year == year and today.month == month:
+    if year == today.year and month == today.month:
         prev_month_button = InlineKeyboardButton("❌ Mois précédent", callback_data="disabled")
 
     keyboard.append([prev_month_button, next_month_button])
-
+    
     return InlineKeyboardMarkup(keyboard)
 
 # 📌 Fonction pour afficher le calendrier
@@ -341,32 +341,6 @@ async def handle_set_time_flashcard(update: Update, context: CallbackContext) ->
 
 
 # 📌 Gestion de la sélection de l'heure
-import re
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext
-
-# message to select and hour 
-      
-# async def select_day(update: Update, context: CallbackContext):
-#     query = update.callback_query
-#     await query.answer()
-    
-#     clicked_button_data = query.data
-#     parts = clicked_button_data.split("_")
-#     if len(parts) == 5:  # Format: "select_day_year_month_day"
-#         _, _, year, month, day = parts
-    
-#         selected_date = f"{int(year)}-{int(month)}-{int(day)}"
-#         context.user_data['selected_date'] = selected_date  # Stocker temporairement la date
-
-#         # Afficher les heures disponibles
-#         keyboard = []
-#         keyboard.append([InlineKeyboardButton("➕ Ajouter une heure", callback_data=f"selected_date_{year}_{month}_{day}")]) # calls confirm scheadule
-#         keyboard.append([InlineKeyboardButton("🔙 Retour", callback_data=f"select_day_{year}_{month}_{day}")])
-
-#         reply_markup = InlineKeyboardMarkup(keyboard)
-
-#         await query.edit_message_text(f"📆 Date choisie : {selected_date}\n🕗 appuyer sur «Ajouter une heure» pour ajouter une heure de révision:", reply_markup=reply_markup)
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, ConversationHandler
@@ -395,6 +369,7 @@ async def select_day(update: Update, context: CallbackContext):
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(f"📆 Date choisie : {selected_date}\n🕗 appuyer sur «Ajouter une heure» pour ajouter une heure de révision:", reply_markup=reply_markup)
+        
 
 async def add_hour(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -438,9 +413,19 @@ async def confirm_hour(update: Update, context: CallbackContext):
     
     # Sauvegarder l'heure (vous pouvez implémenter cette partie selon vos besoins)
     await save_hour(update,context)
+    keyboard = []
+    
+    keyboard.append([InlineKeyboardButton("🔙 Retour", callback_data="listModule_")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(f"✅ Heure enregistrée : {selected_hour}\n"
-                                    f"📅 Date : {selected_date}\n")
+                                    f"📅 Date : {selected_date}\n",reply_markup=reply_markup)
+    # Bloquer le clavier pour empêcher les saisies
+    await update.message.reply_text(
+        "Vous ne pouvez pas saisir de texte .",
+        reply_markup=ReplyKeyboardRemove()
+    )
     return ConversationHandler.END
 
 import sqlite3
