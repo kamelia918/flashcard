@@ -108,7 +108,7 @@ async def handler_list_flashcardupdate(update : Update, context: CallbackContext
             await query.edit_message_text(f"Cartes du cours <b>«{course_name}»</b>:", reply_markup=reply_markup,parse_mode="HTML")
 
 #---------------------------------------------------------------------------------------------------
-# afficher front et back d'une carte 
+# afficher front et back d'une carte  -- pour liste carte et pour set time revision
 
 async def handle_show_flashcard(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
@@ -116,16 +116,23 @@ async def handle_show_flashcard(update: Update, context: CallbackContext) -> Non
     # Gérer les clics de bouton flashcard (révéler le verso)
     clicked_button_data = query.data  # Get the callback_data of the clicked button
     parts = clicked_button_data.split("_")
+    print("parts show flashcard set time revision",parts)
     if len(parts) == 3:  # Format: "show_flashcard_flashcardId"
         _, _, flashcard_id = parts
         # Récupérer les informations du module et du cours depuis context.user_data
         module_name = context.user_data.get('module_name')
         course_name = context.user_data.get('course_name')
         #Create the keyboard with a back button
-        keyboard = [
-            [InlineKeyboardButton("🔙 Retour", callback_data=f"backListFlashcard_{module_name}_{course_name}")]
-        ]
-        
+        if(context.user_data['initial_action'] == "list"):
+            keyboard = [
+                [InlineKeyboardButton("🔙 Retour", callback_data=f"backListFlashcard_{module_name}_{course_name}")]
+            ]
+        else : # set time revision 
+            keyboard = [
+                [InlineKeyboardButton("🔙 Retour", callback_data=f"coursetime_{module_name}_{course_name}")]
+            ]
+
+
         reply_markup = InlineKeyboardMarkup(keyboard)
         
         if not module_name or not course_name:

@@ -4,7 +4,8 @@ import random
 from .module import *
 from .cours import handle_list_cours,handle_delete_course,handle_modify_course,handle_add_cours,handle_click_cours
 from .revision import *
-from .set_revision import *
+from .set_revision_f.set_revision import *
+from .set_revision_f.affichage import handle_list_cours_set_time,handle_list_modules_set_Time,handler_list_flashcardupdate_set_time
 from .backBTN import *
 from .start import start
 from .flashcard import handle_delete_flashcard, handle_modify_choice, handle_modify_flashcard,handle_show_flashcard, handler_list_flashcardupdate
@@ -150,8 +151,6 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     elif clicked_button_data.startswith("coursetime_"): # print flashcards for set time 
         await handler_list_flashcardupdate_set_time(update,context)
 
-    elif clicked_button_data.startswith("show_flashcard_set_time_"):
-        await handler_show_flashcard_set_time(update,context)
 
 
     elif clicked_button_data.startswith("definir_time_module_"):

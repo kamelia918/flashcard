@@ -6,7 +6,7 @@ from handlers.module import modify_module_main,handle_main_add_module
 from handlers.cours import handle_add_cours_main,handle_modify_course_main
 from handlers.flashcard import handler_add_flashcardupdate_main,handler_modify_flashcardupdate_main
 from handlers.backBTN import back_module_button
-from handlers.set_revision import handle_text_input
+from handlers.set_revision_f.set_revision import handle_text_input
 from handlers.utils import handle_button_click, error_handler
 from handlers.set_revision_f.send_notif import check_notifications
 
@@ -44,7 +44,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
         await handle_text_input(update,context)
     
     else:
-        await update.message.reply_text("Aucun bouton n'est pressé", reply_markup=back_module_button())
+        await update.message.reply_text("Aucun bouton n'est pressé")
 
 
 

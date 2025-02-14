@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from data.storage import delete_cours, get_courses,add_course,get_module_id,modify_cours
-from .set_revision import handler_list_flashcardupdate_set_time
+from .set_revision_f.affichage import handler_list_flashcardupdate_set_time
 from .flashcard import handler_add_flashcardupdate,handler_list_flashcardupdate
 from .revision import handler_revise_flashcardupdate
 
