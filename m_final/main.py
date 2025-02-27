@@ -9,20 +9,33 @@ from handlers.backBTN import back_module_button
 from handlers.set_revision import handle_text_input
 from handlers.utils import handle_button_click, error_handler, handle_photo
 from handlers.set_revision_f.send_notif import check_notifications
-
 async def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
+    # Vérifier si l'utilisateur doit fournir un titre pour l'image
+    if "pending_image" in context.user_data:
+        image_path = context.user_data.pop("pending_image")
+        
+        # Vérifier si une flashcard est en cours d'ajout
+        if "flashcard_state" in context.user_data:
+            flashcard_state = context.user_data["flashcard_state"]
+            flashcard_state["front"] = f"{text} ({image_path})"  # Associer le titre et l'image
+            flashcard_state["step"] = "back"
+            await update.message.reply_text("Veuillez maintenant saisir le <b>verso</b> de la carte mémoire. 🔄", 
+                                             parse_mode="HTML")
+        else:
+            await update.message.reply_text("L'image a bien été enregistrée avec le titre : " + text)
+
     # Modifier le nom du module
-    if "modify_module" in context.user_data:
+    elif "modify_module" in context.user_data:
         await modify_module_main(user_id, text, update, context)
 
     # Ajouter un module
     elif "add_module" in context.user_data:
         await handle_main_add_module(update, context, user_id, text)
 
-    # Ajouter un cours dans un module
+    # Ajouter un cours
     elif "current_module" in context.user_data:
         await handle_add_cours_main(user_id, text, update, context)
 
@@ -38,7 +51,7 @@ async def handle_message(update: Update, context: CallbackContext) -> None:
     elif "modify_flashcard" in context.user_data:
         await handler_modify_flashcardupdate_main(update, context, text)
 
-    # Confirmer l'heure pour la révision (set revision time)
+    # Confirmer l'heure pour la révision
     elif "waiting_for_hour" in context.user_data:
         await handle_text_input(update, context)
 

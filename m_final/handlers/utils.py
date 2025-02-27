@@ -2,6 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, ContextTypes
 import random
 import os
+import re  # 📌 Importer re pour extraire le chemin de l'image
 import calendar
 from .module import *
 from .cours import handle_list_cours, handle_delete_course, handle_modify_course, handle_add_cours, handle_click_cours
@@ -115,6 +116,8 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
     elif clicked_button_data.startswith("modify_module_"):
         module_name = clicked_button_data.replace("module_", "")
         await handle_modify_module(update, context)
+   
+
     elif clicked_button_data.startswith("show_flashcard_"):
         parts = clicked_button_data.split("_")
         if len(parts) == 3:
@@ -127,14 +130,30 @@ async def handle_button_click(update: Update, context: CallbackContext) -> None:
             user_id = update.effective_user.id
             all_flashcards = get_flashcards(module_name, course_name, user_id)
             flashcard = next((f for f in all_flashcards if str(f['id']) == flashcard_id), None)
+
             if flashcard:
-                if flashcard['front'].startswith('photos/'):
-                    # Send the photo
-                    await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(flashcard['front'], 'rb'), caption=f"Back: {flashcard['back']}")
+                # 📌 Extraction du chemin de l'image avec regex
+                match = re.search(r'\(([^)]+)\)', flashcard['front'])  
+                if match:
+                    photo_path = match.group(1)  # Récupère le texte entre ()
+                    await context.bot.send_photo(
+                        chat_id=query.message.chat_id,
+                        photo=open(photo_path, "rb"),  # 📌 Ouvre et envoie l'image
+                        caption=f"<b>Verso :</b> {flashcard['back']}",
+                        parse_mode="HTML"
+                    )
                 else:
-                    await query.edit_message_text(f"Front: {flashcard['front']}\nBack: {flashcard['back']}", reply_markup=back_module_button())
+                    # 📌 Si aucun chemin d'image trouvé, afficher normalement
+                    await query.edit_message_text(
+                        f"<b>Recto :</b> {flashcard['front']}\n<b>Verso :</b> {flashcard['back']}",
+                        parse_mode="HTML",
+                        reply_markup=back_module_button()
+                    )
             else:
-                await query.edit_message_text("Flashcard not found.", reply_markup=back_module_button())
+                await query.edit_message_text("Flashcard introuvable.", reply_markup=back_module_button())
+
+
+
     
     elif clicked_button_data.startswith("delete_flashcard_"):
         await handle_delete_flashcard(update, context)
@@ -305,26 +324,6 @@ async def handle_photo(update: Update, context: CallbackContext) -> None:
     file_path = f"photos/{file.file_id}.jpg"
     await file.download_to_drive(file_path)
 
-    if "modify_flashcard" in context.user_data and context.user_data["modify_flashcard"]["choice"] == "modify_front":
-        flashcard_id = context.user_data["modify_flashcard"]["id"]
-        modify_flashcard(flashcard_id, new_front=file_path)
-        await update.message.reply_text("Photo du recto mise à jour!", reply_markup=back_cours_button())
-        del context.user_data["modify_flashcard"]
-    elif "flashcard_state" in context.user_data:
-        flashcard_state = context.user_data["flashcard_state"]
-        module_name = flashcard_state["module"]
-        course_name = flashcard_state["course"]
-
-        if flashcard_state["step"] == "front":
-            context.user_data["flashcard_state"]["front"] = file_path
-            context.user_data["flashcard_state"]["step"] = "back"
-            await update.message.reply_text("Veuillez maintenant saisir le <b>verso</b> de la carte mémoire. 🔄", reply_markup=back_cours_button(), parse_mode="HTML")
-        elif flashcard_state["step"] == "back":
-            front = context.user_data["flashcard_state"]["front"]
-            back = update.message.text
-            result = add_flashcard(module_name, course_name, front, back, user_id)
-            if result == "success":
-                await update.message.reply_text(f"✅ Flashcard ajoutée!\n<b>Recto:</b> photo\n<b>Verso:</b> {back}", reply_markup=back_cours_button(), parse_mode="HTML")
-            elif result == "duplicate_flashcard":
-                await update.message.reply_text(f"Flashcard avec le recto '{front}' existe déjà dans ce cours.", reply_markup=back_cours_button())
-            del context.user_data["flashcard_state"]
+    # Stocker temporairement l'image et demander un titre
+    context.user_data["pending_image"] = file_path
+    await update.message.reply_text("Veuillez entrer un titre pour cette image 📌")

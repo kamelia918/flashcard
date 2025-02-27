@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 import random
 from data.storage import get_due_flashcards, get_flashcards
-
+import re
 async def handler_revise_flashcardupdate(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
     await query.answer()
@@ -91,17 +91,28 @@ async def show_next_flashcard(update: Update, context: CallbackContext) -> None:
         return
 
     flashcard = flashcards[current_index]
+      
+    front = flashcard['front']
+    
+    # Utiliser une regex pour détecter si le recto contient un titre + chemin d'image
+    match = re.match(r"(.+?) \((photos/.+?)\)", front)  # Ex: "Titre (photos/image.jpg)"
     keyboard = [
         [InlineKeyboardButton("Afficher le verso", callback_data=f"show_back_{current_index}")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if flashcard['front'].startswith('photos/'):
-        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(flashcard['front'], 'rb'), caption=f"Flashcard {current_index + 1}/{len(flashcards)}", reply_markup=reply_markup)
+    if match:
+        image_path = match.group(2)  # Extraire le chemin de l'image
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=open(image_path, 'rb'),
+            caption=f"Flashcard {current_index + 1}/{len(flashcards)}",
+            reply_markup=reply_markup
+        )
     else:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"Flashcard {current_index + 1}/{len(flashcards)}\nRecto: {flashcard['front']}",
+            text=f"Flashcard {current_index + 1}/{len(flashcards)}\nRecto: {front}",
             reply_markup=reply_markup
         )
 
@@ -116,6 +127,12 @@ async def handle_show_back(update: Update, context: CallbackContext) -> None:
     if len(parts) == 3:
         current_index = int(parts[2])
         flashcard = revision_state["flashcards"][current_index]
+        front = flashcard['front']
+        back = flashcard['back']
+
+        # Vérifier si le recto contient un titre + chemin d'image
+        match = re.match(r"(.+?) \((photos/.+?)\)", front)
+
         keyboard = [
             [InlineKeyboardButton("Oui", callback_data=f"remembered_{current_index}")],
             [InlineKeyboardButton("Non", callback_data=f"forgot_{current_index}")]
@@ -129,14 +146,21 @@ async def handle_show_back(update: Update, context: CallbackContext) -> None:
         keyboard.append([InlineKeyboardButton("Retour", callback_data="back_to_modules")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        if flashcard['front'].startswith('photos/'):
-            await context.bot.send_photo(chat_id=query.message.chat_id, photo=open(flashcard['front'], 'rb'), caption=f"Verso: {flashcard['back']}\nVous vous en souvenez?", reply_markup=reply_markup)
+        if match:
+            image_path = match.group(2)
+            await context.bot.send_photo(
+                chat_id=query.message.chat_id,
+                photo=open(image_path, 'rb'),
+                caption=f"Verso: {back}\nVous vous en souvenez?",
+                reply_markup=reply_markup
+            )
         else:
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
-                text=f"Recto: {flashcard['front']}\nVerso: {flashcard['back']}\nVous vous en souvenez?",
+                text=f"Recto: {front}\nVerso: {back}\nVous vous en souvenez?",
                 reply_markup=reply_markup
             )
+
 
 async def handle_revision_feedback(update: Update, context: CallbackContext) -> None:
     query = update.callback_query

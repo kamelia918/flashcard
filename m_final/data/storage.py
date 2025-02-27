@@ -232,15 +232,17 @@ def add_flashcard(module_name: str, course_name: str, front: str, back: str, use
             """, (course_name, module_name, user_id))
             course_id = cursor.fetchone()
             if course_id:
+                title = photo_path.split('/')[-1].split('.')[0] if photo_path else front
                 cursor.execute("""
                     INSERT INTO flashcards (course_id, front, back, next_review, interval, photo_path)
-                    VALUES (?, ?, ?, datetime('now'), 1, ?)
-                """, (course_id[0], front, back, photo_path))
+                    VALUES (?, ?, ?, datetime('now', '+1 day'), 1, ?)
+                """, (course_id[0], title, back, photo_path))
                 conn.commit()
                 return "success"
-            return "invalid_course"
+            return "course_not_found"
     except sqlite3.IntegrityError:
         return "duplicate_flashcard"
+
 
 
 # Get Flashcards for a specific Course
